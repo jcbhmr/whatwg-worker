@@ -9,7 +9,7 @@
     "./internal/*": null
   },
   "scripts": {
-    "test": "node --experimental-loader ./loader.js --no-warnings ./test/spec.js"
+    "test": "node --no-warnings ./test/spec.js"
   },
   "repository": "github:jimmywarting/whatwg-worker",
   "keywords": [
