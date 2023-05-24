@@ -1,25 +1,17 @@
 {
   "name": "whatwg-worker",
-  "version": "1.0.2",
+  "version": "2.0.0",
   "description": "Consistent Web Workers in browser and Node.",
   "type": "module",
-  "main": "node-worker.js",
-  "browser": "./browser-worker.js",
   "exports": {
-    "browser": "./browser-worker.js",
-    "deno": "./browser-worker.js",
-    "node": "./node-worker.js"
-  },
-  "engines": {
-    "node": "=>19"
+    ".": "./src/index.js",
+    "./*.js": "./src/*.js",
+    "./internal/*": null
   },
   "scripts": {
     "test": "node --experimental-loader ./loader.js --no-warnings ./test/spec.js"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/jimmywarting/whatwg-worker.git"
-  },
+  "repository": "github:jimmywarting/whatwg-worker",
   "keywords": [
     "worker",
     "worker_threads",
@@ -27,20 +19,15 @@
     "web worker",
     "threads"
   ],
-  "author": "Jimmy Wärting <jimmy@warting.se> (https://jimmy.warting.se/opensource)",
+  "contributors": [
+    "Jimmy Wärting <jimmy@warting.se> (https://jimmy.warting.se/opensource)",
+    "Jacob Hummer <jcbhmr@outlook.com> (https://jcbhmr.me/)"
+  ],
   "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/jimmywarting/whatwg-worker/issues"
-  },
-  "homepage": "https://github.com/jimmywarting/whatwg-worker#readme",
+  "bugs": "https://github.com/jimmywarting/whatwg-worker/issues",
+  "homepage": "https://jimmywarting.github.io/whatwg-worker",
   "funding": [
-    {
-      "type": "github",
-      "url": "https://github.com/sponsors/jimmywarting"
-    },
-    {
-      "type": "github",
-      "url": "https://paypal.me/jimmywarting"
-    }
+    "https://github.com/sponsors/jimmywarting",
+    "https://paypal.me/jimmywarting"
   ]
 }
