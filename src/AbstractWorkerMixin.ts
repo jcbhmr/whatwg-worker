@@ -1,4 +1,4 @@
-import defineEventHandlerIDLAttribute from "@jcbhmr/html-event-handler-attributes/defineEventHandlerIDLAttribute.js";
+import { defineEventHandlerIDLAttribute } from "@jcbhmr/html-event-handler-attributes";
 import type ErrorEvent from "@jcbhmr/html-event-error/ErrorEvent.js";
 
 interface AbstractWorkerMixin {
