@@ -29,5 +29,16 @@
   "funding": [
     "https://github.com/sponsors/jimmywarting",
     "https://paypal.me/jimmywarting"
-  ]
+  ],
+  "devDependencies": {
+    "prettier": "^2.8.8",
+    "prettier-plugin-jsdoc": "^0.4.2",
+    "prettier-plugin-packagejson": "^2.4.3",
+    "typedoc": "^0.24.7",
+    "typescript": "^5.0.4",
+    "vite": "^4.3.8",
+    "vite-plugin-dts": "^2.3.0",
+    "vite-plugin-no-bundle": "^2.0.2",
+    "vitest": "^0.31.1"
+  }
 }
