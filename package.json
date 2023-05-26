@@ -42,5 +42,14 @@
       "type": "github",
       "url": "https://paypal.me/jimmywarting"
     }
-  ]
+  ],
+  "devDependencies": {
+    "@types/node": "^20.2.4",
+    "tsx": "^3.12.7",
+    "typescript": "^5.0.4"
+  },
+  "dependencies": {
+    "@jcbhmr/html-event-error": "^1.0.1",
+    "@jcbhmr/html-event-handler-attributes": "^1.0.0"
+  }
 }
