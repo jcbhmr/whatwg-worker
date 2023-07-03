@@ -1,77 +1,79 @@
-/**
- * Copyright 2020 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+import test from "node:test";
+import assert from "node:assert";
+import esmurl from "esmurl";
+import Worker from "../src/Worker-node.js";
 
-import test from 'ava';
-import Worker from '..';
+const workerURL =
+  import.meta.resolve?.("./42.js") ?? new URL("42.js", import.meta.url).href;
 
-let worker;
-
-function createModuleWorker(url) {
-	const worker = new Worker(url, { type: 'module' });
-	worker.events = [];
-	worker.addEventListener('message', e => {
-		worker.events.push(e);
-	});
-	return worker;
-}
-
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-test.after.always(t => {
-	if (worker) worker.terminate();
+test("new Worker() throws with no type:module", () => {
+  assert.throws(() => {
+    new Worker(workerURL);
+  });
 });
 
-test.serial('instantiation', async t => {
-	worker = createModuleWorker('./test/fixtures/worker.js');
-	await sleep(500);
-	t.is(worker.events.length, 1, 'should have received a message event');
-	t.is(worker.events[0].data, 42);
+test("new Worker() works with type:module", () => {
+  const w = new Worker(workerURL, { type: "module" });
+  w.terminate();
 });
 
-test.serial('postMessage', async t => {
-	// reset events list
-	worker.events.length = 0;
-
-	const msg = { greeting: 'hello' };
-	worker.postMessage(msg);
-	const timestamp = Date.now();
-
-	await sleep(500);
-
-	t.is(worker.events.length, 2, 'should have received two message responses');
-
-	const first = worker.events[0];
-	t.is(first.data[0], 'received onmessage');
-	t.assert(Math.abs(timestamp - first.data[1]) < 500);
-	t.deepEqual(first.data[2], msg);
-	t.not(first.data[2], msg);
-
-	const second = worker.events[1];
-	t.is(second.data[0], 'received message event');
-	t.assert(Math.abs(timestamp - second.data[1]) < 500);
-	t.deepEqual(second.data[2], msg);
-	t.not(second.data[2], msg);
+test("new Worker() throws with type:classic", () => {
+  assert.throws(() => {
+    new Worker(workerURL, { type: "classic" });
+  });
 });
 
-test.serial('close', async t => {
-	const worker = new Worker('./test/fixtures/close.js', { type: 'module' });
-	// Not emitted in the browser, just for testing
-	const closed = await new Promise((resolve, reject) => {
-		worker.addEventListener('close', () => resolve(true));
-		setTimeout(reject, 500);
-	});
-	t.is(closed, true, 'should have closed itself');
+test("42.js postMessage(42) is received", async () => {
+  const w = new Worker(workerURL, { type: "module" });
+  const p = new Promise((resolve, reject) => {
+    w.addEventListener("message", (event) => {
+      resolve(event.data);
+    });
+    w.addEventListener("error", (event) => {
+      reject(event.error);
+    });
+  });
+  assert.strictEqual(await p, 42);
+  w.terminate();
+});
+
+test("blob: URL works!", async () => {
+  const blob = new Blob([`postMessage(42)`], { type: "text/javascript" });
+  const blobURL = URL.createObjectURL(blob);
+  const w = new Worker(blobURL, { type: "module" });
+  const p = new Promise((resolve, reject) => {
+    w.addEventListener("message", (event) => {
+      resolve(event.data);
+    });
+    w.addEventListener("error", (event) => {
+      reject(event.error);
+    });
+  });
+  assert.strictEqual(await p, 42);
+  w.terminate();
+});
+
+test("worker.postMessage() works", async () => {
+  const w = new Worker(
+    esmurl(import.meta, async () => {
+      globalThis.addEventListener("message", (event) => {
+        console.log(event.data);
+        postMessage(event.data);
+      });
+    }),
+    { type: "module" }
+  );
+  const p = new Promise((resolve, reject) => {
+    w.addEventListener("message", (event) => {
+      resolve(event.data);
+    });
+    w.addEventListener("error", (event) => {
+      reject(event.error);
+    });
+  });
+  w.postMessage(42);
+  assert.strictEqual(await p, 42);
+  w.terminate();
+
+  await new Promise((resolve) => setTimeout(resolve, 1000));
 });
