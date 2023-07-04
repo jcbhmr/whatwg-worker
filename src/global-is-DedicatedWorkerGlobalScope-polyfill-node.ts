@@ -1,4 +1,4 @@
-import DedicatedWorkerGlobalScope from "../DedicatedWorkerGlobalScope-node.js";
+import DedicatedWorkerGlobalScope from "./DedicatedWorkerGlobalScope-node.js";
 
 function safeThis(f) {
   function g() {
@@ -13,7 +13,7 @@ for (const key of Reflect.ownKeys(EventTarget.prototype)) {
   if (key === "constructor") {
     continue;
   }
-  const d = Object.getOwnPropertyDescriptor(EventTarget.prototype, key);
+  const d = Object.getOwnPropertyDescriptor(EventTarget.prototype, key)!;
   if ("value" in d) {
     d.value = safeThis(d.value);
   } else {
