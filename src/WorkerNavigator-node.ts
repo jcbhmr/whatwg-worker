@@ -1,24 +1,22 @@
-import { interface as interface_ } from "@webfill/webidl";
-import type { Interface } from "@webfill/webidl";
+import { interface as interface_, includes } from "@webfill/webidl";
 import NavigatorID from "@webfill/html-navigator/NavigatorID.js";
 import NavigatorLanguage from "@webfill/html-navigator/NavigatorLanguage.js";
 import NavigatorOnLine from "@webfill/html-navigator/NavigatorOnLine.js";
 import NavigatorConcurrentHardware from "@webfill/html-navigator/NavigatorConcurrentHardware.js";
 
 @interface_("WorkerNavigator", false)
-// @ts-ignore
-class WorkerNavigator implements Interface {}
+class WorkerNavigator {}
 
 interface WorkerNavigator extends NavigatorID {}
-WorkerNavigator._includes(NavigatorID);
+includes(WorkerNavigator, NavigatorID);
 
 interface WorkerNavigator extends NavigatorLanguage {}
-WorkerNavigator._includes(NavigatorLanguage);
+includes(WorkerNavigator, NavigatorLanguage);
 
 interface WorkerNavigator extends NavigatorOnLine {}
-WorkerNavigator._includes(NavigatorOnLine);
+includes(WorkerNavigator, NavigatorOnLine);
 
 interface WorkerNavigator extends NavigatorConcurrentHardware {}
-WorkerNavigator._includes(NavigatorConcurrentHardware);
+includes(WorkerNavigator, NavigatorConcurrentHardware);
 
 export default WorkerNavigator;

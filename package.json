@@ -1,6 +1,6 @@
 {
-  "name": "whatwg-worker",
-  "version": "1.0.2",
+  "name": "@webfill/html-workers",
+  "version": "0.1.0",
   "description": "Consistent Web Workers in browser and Node.",
   "type": "module",
   "main": "node-worker.js",

@@ -7,8 +7,7 @@ import type { Interface } from "@webfill/webidl";
 import { USVString } from "@webfill/webidl/types.js";
 
 @interface_("WorkerLocation", false)
-// @ts-ignore
-export default class WorkerLocation implements Interface {
+export default class WorkerLocation {
   #url: URL;
 
   constructor(href: string) {

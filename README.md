@@ -1,160 +1,323 @@
-<h1 align="center">
-  Web Worker
-</h1>
-<p align="center">
-  Native cross-platform Web Workers. Works in published npm modules.
-</p>
+# Isomorphic HTML `Worker` threads
 
-**In Node**, it's a web-compatible Worker implementation atop Node's [worker_threads](https://nodejs.org/api/worker_threads.html).
+🧵 Launch a `new Worker()` in Node.js, Deno, or the browser
 
-**In the browser** (and when bundled for the browser), it's simply an alias of `Worker`.
+<div align="center">
 
-### Features
+![](https://picsum.photos/600/400)
 
-_Here's how this is different from worker_threads:_
+</div>
 
-- makes Worker code compatible across browser, Node and Deno
-- only supports Module Workers (`{type:'module'}`)
-- uses DOM-style events (`Event.data`, `Event.type`, `MessageEvent`, etc)
-- supports event handler properties (`worker.onmessage=..`)
-- `Worker()` accepts a URL, Blob URL or Data URL (via loaders)
-- emulates browser-style [WorkerGlobalScope] within the worker
-- Worker thread can import `data:`, `https:`, `blob:`, `file:` files just fine
- - Worker constructed also supports those too `new Worker('https://...')`
+👷‍♂️ Lets you use `new Worker()` anywhere \
+🤝 Implements `SharedWorker`! \
+0️⃣ Zero-cost when used in the browser \
+✨ WebIDL-compliant
 
-### Usage Example
+## Installation
 
-In its simplest form:
+You can install this package using npm, [Yarn], [pnpm], or your other favorite
+npm package manager. 📦
 
-```js
-import Worker from 'whatwg-worker'
-
-const worker = new Worker('data:text/javascript,postMessage("hello")')
-worker.onmessage = e => console.log(e.data)  // "hello"
+```sh
+npm install @webfill/html-workers
 ```
 
-<table>
-<thead><tr><th><strong>main.js</strong></th><th><strong>worker.js</strong></th></tr></thead>
-<tbody><tr><td>
+If you're using Deno, you can use the new `npm:` imports or just import it
+straight from an npm CDN like [esm.sh] or [jsDelivr].
 
 ```js
-import Worker from 'whatwg-worker'
-
-const url = new URL('./worker.js', import.meta.url)
-const worker = new Worker(url)
-
-worker.addEventListener('message', e => {
-  console.log(e.data)  // "hiya!"
-})
-
-worker.postMessage('hello')
+import "npm:@webfill/html-workers";
+import "https://esm.sh/@webfill/html-workers";
 ```
 
-</td><td valign="top">
+For browser users, just import it via a CDN like [esm.sh] or [jsDelivr]. You'll
+get a lot of re-exported globals for zero-cost. 🤩
 
 ```js
-addEventListener('message', e => {
-  if (e.data === 'hello') {
-    postMessage('hiya!')
-  }
-})
+import "https://esm.sh/@webfill/html-workers";
+import "https://esm.run/@webfill/html-workers";
 ```
 
-</td></tr></tbody>
+🛑 The `SharedWorker` shim implementation for browsers will only be loaded if no
+`SharedWorker` exists. This is **not always zero-cost**. Take a look at [the
+`SharedWorker` support matrix] on caniuse.com. Support is notably lacking on
+mobile device browsers. 😭
+
+## Usage
+
+The easiest way to get started is just to `import` the polyfill in your main
+thread, and then once in each worker thread. 🛑 **It's on _you_** to `import`
+the polyfill on the "inside" of the worker. Why? Because sometimes you might
+_not_ want to have the polyfill on the inside of the worker.
+
+<table><td>
+
+```js
+// main.js
+import "@webfill/html-workers";
+
+// 👉
+const u = import.meta.resolve("./worker.js");
+const w = new Worker(u, { type: "module" });
+w.onmessage = (e) => console.log(e.data);
+//=> "Hello from file:///worker.js!"
+w.postMessage(5000);
+```
+
+<td>
+
+```js
+// worker.js
+import "@webfill/html-workers";
+
+globalThis.postMessage(`Hello from ${location}!`);
+globalThis.onmessage = (e) => console.log(e.data);
+//=> 5000
+const u = `data:text/javascript,console.log("Hello world!")`;
+const w = new Worker(u, { type: "module" });
+//=> "Hello world!"
+```
+
 </table>
 
-👉 Notice how `new URL('./worker.js', import.meta.url)` is used above to load the worker relative to the current module instead of the application base URL. Without this, Worker URLs are relative to a document's URL, which in Node.js is interpreted to be `process.cwd()`.
+☝ That code will work in the browser, Node.js, and Deno. 😱 And guess what? In
+the browser, **zero code** will be bundled thanks to compile-time export
+conditions! 🤩
 
-> _Support for this pattern in build tools and test frameworks is still limited. We are [working on growing this](https://github.com/developit/web-worker/issues/4)._
+<details><summary>⚠️ Node.js can't import <code>blob:</code> URLs</summary>
 
-### Module Workers
-
-Module Workers are supported in Node 12.8+ using this plugin, leveraging Node's native ES Modules support.
-In the browser, they can be used natively in Chrome 80+, or in all browsers via [worker-plugin] or [rollup-plugin-off-main-thread]. As with classic workers, there is no difference in usage between Node and the browser:
-
-<table>
-<thead><tr><th><strong>main.js</strong></th><th><strong>worker.js</strong></th></tr></thead>
-<tbody><tr><td>
+Node.js will fail if you do this:
 
 ```js
-import Worker from 'whatwg-worker'
-
-const worker = new Worker(
-  new URL('./worker.js', import.meta.url),
-  { type: 'module' }
-)
-worker.addEventListener('message', e => {
-  console.log(e.data)  // "200 OK"
-})
-worker.postMessage('https://httpstat.us/200')
+const b = new Blob([`console.log(42)`], { type: "text/javascript" });
+const u = URL.createObjectURL(b);
+await import(u);
+//=> Uncaught: Error [ERR_UNSUPPORTED_ESM_URL_SCHEME]: ...
 ```
 
-</td><td valign="top">
+There are a couple relevant issues tracking this. [nodejs/node#47573] tracks the
+`import("blob:")` case, while [nodejs/node#46557] tracks the support for
+cross-thread access to `blob:` URLs (including `fetch()`).
+
+If you want to use `blob:` URLs with `new Worker()` before those things happen,
+you can use the `@jcbhmr/bburls` package like this:
+
+```sh
+export NODE_OPTIONS='--experimental-loader=@jcbhmr/bblobu --import=@jcbhmr/bblobu'
+node main.js
+```
+
+☝ This will add a custom `blob:` import loader as well as add a `fetch()`
+decorator to support `blob:` URLs _across threads_. Check out [jcbhmr/bblobu]
+for more information.
+
+🔗 If you're interested in `import("https://...")` support, check out other
+Node.js HTTP loaders like [the Node.js docs HTTP loader] or
+[node-loader/node-loader-http].
+
+</details>
+
+👀 Also check out the [esmurl] package which lets you write your worker thread
+code right next to your main thread code. Oh, and it works with bundlers! 😊
 
 ```js
-addEventListener('message', async e => {
-  const url = e.data
-  const res = await fetch(url)
-  const text = await res.text()
-  postMessage(text)
-})
+// main.js
+const u = esmurl(import.meta, async () => {
+  await import("@webfill/html-workers");
+  const { default: isOdd } = await import("is-odd");
+  globalThis.onmessage = (e) => {
+    const n = e.data;
+    const r = isOdd(n);
+    globalThis.postMessage(r);
+  };
+});
+
+const w = new Worker(u, { type: "module" });
+w.onmessage = (e) => console.log(e.data);
+w.postMessage(5000);
+//=> false
+w.postMessage(5001);
+//=> true
 ```
 
-</td></tr></tbody>
+If you're looking to use this package as a ponyfill (like for a library), you
+can import any of the direct files that we expose as sub-path exports.
+
+<table><td>
+
+```js
+// main.js
+import Worker from "@webfill/html-workers/Worker.js";
+
+console.log("Worker" in globalThis);
+//=> false
+const u = import.meta.resolve("./worker.js");
+const w = new Worker(u, { type: "module" });
+//=> "Hello world!"
+w.onmessage = (e) => console.log(e.data);
+//=> "Hello from file:///worker.js!"
+```
+
+<td>
+
+```js
+// worker.js
+import self from "@webfill/html-workers/self.js";
+import workerThreads from "node:worker_threads";
+
+console.log(workerThreads.workerData);
+//=> { constructorName: "Worker", type: "module", ... }
+console.log("DedicatedWorkerGlobalScope" in globalThis);
+//=> false
+
+self.postMessage(`Hello from ${self.location}!`);
+```
+
 </table>
 
+ℹ `self` from `@webfill/html-workers/self.js` is an instance of
+`DedicatedWorkerGlobalScope`. It **doesn't have any `globalThis` props**.
 
-### Data URLs
+### `SharedWorker` threads
 
-Instantiating Worker using a Data URL is supported in both module and classic workers:
+Don't forget! We implement the `SharedWorker` class too. It works just like you
+expect it to in the browser. Remember, `SharedWorker` instances are keyed by the
+**constructor URL**, not the final/redirected URL.
 
-```js
-import Worker from 'whatwg-worker'
-
-const worker = new Worker(`data:application/javascript,postMessage(42)`)
-worker.addEventListener('message', e => {
-  console.log(e.data)  // 42
-})
-```
-
-### Blob URLs
-
-Instantiating Worker using a Blob URL is supported
+<table><td rowspan="2">
 
 ```js
-import Worker from 'whatwg-worker'
+// main.js
+import "@webfill/html-workers";
 
-const code = 'import fs from "node:fs"'
-const blob = new Blob([code], { type: 'text/javascript' })
-const worker = new Worker(URL.createObjectURL(blob))
+var u = import.meta.resolve("./shared.js");
+const s = new SharedWorker(u, { type: "module" });
+s.port.postMessage(10);
+
+var u = import.meta.resolve("./worker.js");
+new Worker(u, { type: "module" });
+new Worker(u, { type: "module" });
+await new Promise((r) => setTimeout(r, 100));
+
+s.port.onmessage = (e) => console.log(e.data);
+//=> 10
+//=> 110
+//=> 210
 ```
 
-### HTTP loader supported.
-
-Worker gets added https- loader support via `--loader` flag
+<td>
 
 ```js
-import Worker from 'whatwg-worker'
+// shared.js
+import "@webfill/html-workers";
 
-const code = 'import xyz from "https://example.com/main.js"'
-const blob = new Blob([code], { type: 'text/javascript' })
-const worker = new Worker(URL.createObjectURL(blob))
+const u = import.meta.resolve("./worker.js");
+let n = 0;
+globalThis.onconnect = (e) =>
+  (e.ports[0].onmessage = (e) => console.log((n += e.data)));
 ```
+
+<tr><td>
 
 ```js
-import Worker from 'whatwg-worker'
+// worker.js
+import "@webfill/html-workers";
 
-const url = 'https://example.com/main.js'
-const worker = new Worker(url)
+const u = import.meta.resolve("./shared.js");
+const w = new SharedWorker(u, { type: "module" });
+w.postMessage(100);
 ```
 
+</table>
 
-# Worker global scope
+### What's included
 
-Each time when creating a new Worker it will get assigned some new global variables
-including
-- name
-- Worker (to create worker within a worker)
-- self
-- postMessage
-- and `globalThis` will be inherit `EventTarget` (addEventListener, remove and dispatch)
+This package focuses mostly on stuff that is on the `workers.html` page of the
+HTML spec (that's where we got the name `html-workers` from!). That means things
+like `Worker` and `AbstractWorker` are here, but `ServiceWorker` isn't.
+
+- [ ] `Worker` class
+- [ ] `AbstractWorker` interface
+- [ ] `WorkerGlobalScope` class
+- [ ] `DedicatedWorkerGlobalScope` class
+- [ ] `WorkerLocation` class
+- [ ] `WorkerNavigator` class
+- [ ] `SharedWorker` class
+- [ ] `SharedWorkerGlobalScope` class
+- [ ] `WorkerOptions` type
+
+It's important to note that the `navigator` and `location` globals that are
+exposed on the "inside" of a `new Worker()` **do not include** some of the
+typical web mixin classes like [`NavigatorUA`]. You can add these yourself in
+your own code if you like:
+
+```js
+// worker.js
+import "@webfill/ua-client-hints";
+
+console.log(navigator.userAgentData.brands);
+//=> [{ brand: "Node.js", version: "v20.0.0" }]
+```
+
+## Development
+
+To get started, run `npm install` and `npm run dev` to start the dev loop! We
+use `tsx` + `node:test` for testing. You can run `npm test` to run just the
+tests.
+
+```sh
+npm install
+npm run dev
+```
+
+To run the build script, run `npm run build`. This will generate the `dist/`
+folder with the ESM output files. We are using plain `tsc`.
+
+```sh
+npm run build
+```
+
+This package uses TypeScript. We want to use TypeScript so that we get easy code
+co-location for all the complex types we want to declare. We also get access to
+Stage 3 JavaScript features like `using` and `@decorators`! We use `@decorators`
+to make the WebIDL implementations a lot more readable vs. applying these WebIDL
+annotations _after_ the fact.
+
+```ts
+@interface_("Worker")
+@constructor([USVString, optional(WorkerOptions)])
+class Worker {
+  constructor(scriptURL: USVString, options?: WorkerOptions) {}
+  @eventHandlerIDLAttribute("message")
+  accessor onmessage: EventHandler;
+  @eventHandlerIDLAttribute("messageerror")
+  accessor onmessageerror: EventHandler;
+}
+```
+
+<details><summary>What the alternative JavaScript version looks like</summary>
+
+```js
+class Worker {
+  constructor(scriptURL, options) {}
+}
+Worker = interface_("Worker")(Worker);
+Worker = constructor([USVString, optional(WorkerOptions)])(Worker);
+defineEventHandlerIDLAttribute(Worker, "onmessage", "message");
+defineEventHandlerIDLAttribute(Worker, "onmessageerror", "messageerror");
+```
+
+</details>
+
+<!-- prettier-ignore-start -->
+[esmurl]: https://github.com/togajam/esmurl#readme
+[`navigatorua`]: https://wicg.github.io/ua-client-hints/#navigatorua
+[esm.sh]: https://esm.sh/
+[jsdelivr]: https://www.jsdelivr.com/esm
+[yarn]: https://yarnpkg.com/
+[pnpm]: https://pnpm.io/
+[the `sharedworker` support matrix]: https://caniuse.com/sharedworkers
+[the node.js docs http loader]: https://nodejs.org/api/esm.html#https-loader
+[node-loader/node-loader-http]: https://github.com/node-loader/node-loader-http#readme
+[jcbhmr/bblobu]: https://github.com/jcbhmr/bblobu#readme
+<!-- prettier-ignore-end -->
